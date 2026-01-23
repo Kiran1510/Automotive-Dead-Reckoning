@@ -35,6 +35,10 @@ This project integrates VectorNav VN-100 IMU and BU-353N GPS data to implement d
 ```
 ├── circle_data/          # Circular trajectory test data
 ├── driving_data/         # Real-world driving dataset
+    ├── *.py             # Calibration scripts
+│   ├── *.csv            # GPS and IMU sensor logs
+│   └── *.png            # Result plots
+
 │   ├── *.py             # Analysis and visualization scripts
 │   ├── *.csv            # GPS and IMU sensor logs
 │   └── *.png            # Result plots
