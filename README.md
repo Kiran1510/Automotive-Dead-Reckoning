@@ -66,4 +66,18 @@ This dead reckoning implementation is relevant for:
 
 ---
 
-**Course**: EECE5554 - Robot Sensing and Navigation, Northeastern University
+## Author
+
+**Kiran Sairam Bethi Balagangadaran**  
+MS Robotics, Northeastern University
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- Dr Kris Dorsey
+- Northeastern University EECE5554 Course Staff
+- ROS2 Community
+- Open-source sensor driver contributors
