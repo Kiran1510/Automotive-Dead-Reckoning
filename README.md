@@ -4,7 +4,7 @@ Vehicle navigation system implementing multi-sensor fusion with GPS and IMU for 
 
 ## Overview
 
-This project integrates VectorNav VN-100 IMU and BU-353N GPS data to implement dead reckoning for vehicle navigation. The system fuses multiple sensor streams using complementary filtering techniques to achieve robust positioning even during GPS signal degradation.
+This project integrates VectorNav VN-100 IMU and BU-353N GPS data to implement 2-D X and Y coordinate dead reckoning for vehicle navigation. The system fuses two of these sensor streams (40hz rate for IMU and 1hz rate for GPS) using complementary filtering to achieve positioning during GPS signal degradation.
 
 ## Key Features
 
@@ -29,7 +29,7 @@ This project integrates VectorNav VN-100 IMU and BU-353N GPS data to implement d
 
 ## Results
 
-[Add key metrics here - e.g., "Achieved X% accuracy improvement over GPS-only tracking" or "Successfully maintained <Y meter error during Z-second GPS outage"]
+Robust tracking for upto 30 seconds before needing GPS corrections. Useful in GPS denied areas such as tunnels, underpasses, and occluded city blocks.
 
 ## Repository Structure
 ```
