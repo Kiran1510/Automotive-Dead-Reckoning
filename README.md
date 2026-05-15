@@ -6,6 +6,8 @@
 
 A 41-minute Boston drive ends with the dead-reckoned trajectory within **260 m mean / 425 m max** of GPS ground truth (Kalman heading, the default). Older pipelines that relied on magnetometer alone for heading were 3× looser.
 
+![Dead-reckoned trajectory (blue) vs GPS UTM ground truth (red) on the 41-minute Boston drive](build/driving_data/trajectory_imu_vs_gps.png)
+
 ---
 
 ## Quickstart
@@ -197,25 +199,45 @@ Every script supports `--help`. Quick summary:
 
 ### `build/driving_data/trajectory_imu_vs_gps.png`
 
+![Trajectory IMU vs GPS](build/driving_data/trajectory_imu_vs_gps.png)
+
 The headline plot. Blue is the dead-reckoned path computed only from the IMU's integrated velocity and chosen yaw source; red is the GPS UTM ground truth. They should track each other closely; divergence reveals heading drift.
 
 With the default `--yaw-source kalman`, expect **260 m mean / 425 m max / 325 m final** error over the 41-minute drive.
 
 ### `build/driving_data/yaw_all_sources.png`
 
+![All five yaw sources compared](build/driving_data/yaw_all_sources.png)
+
 Overlay of all five yaw streams. The Kalman/RTS streams (red and blue) should track each other tightly; `yaw_fused` (green) visibly drifts upward over the drive because the magnetometer is responding to magnetic interference, not real rotation. `yaw_quat` (purple) is the VN-100's own answer.
 
 ### `build/circle_data/magnetometer_calibration.png`
 
+![Magnetometer calibration](build/circle_data/magnetometer_calibration.png)
+
 Red scatter is the raw magnetometer field while driving in circles (offset, elliptical). Blue scatter is the same data after applying the computed hard- and soft-iron correction; it should overlap the green target circle. A small residual `radius std` (printed by `calibration.py`) means a good fit.
 
-### `build/driving_data/gps_distance_methods.png`
+### `build/driving_data/velocity_three_panel.png`
 
-Three GPS-derived speed traces overlaid (Haversine, Pythagorean lat/lon, Pythagorean UTM). The lower panel shows pairwise deltas — typically below 0.025 m/s, three orders of magnitude under GPS noise. The takeaway is "the choice between these three doesn't matter for accuracy at car-segment scale; pick the one that matches your coordinate frame."
+![Velocity fusion](build/driving_data/velocity_three_panel.png)
+
+Top: raw IMU-integrated speed (drifts because acc_x bias residuals integrate over the run) vs GPS speed. Middle: same IMU speed after a high-pass filter at 0.10 Hz — drift removed, short-term structure preserved. Bottom: the complementary fused speed (green) — GPS at low frequency + IMU at high frequency — closely tracks GPS while keeping IMU's sample-rate responsiveness.
 
 ### `build/driving_data/dead_reckoning_comparison.png`
 
+![Dead-reckoning consistency check](build/driving_data/dead_reckoning_comparison.png)
+
 ω·V (predicted lateral accel from yaw rate × forward speed) plotted against the measured lateral accel. Curves should overlap in shape; a constant offset reveals a residual acc_y bias that the filters didn't fully remove.
+
+### `build/driving_data/gps_distance_methods.png`
+
+![GPS distance method comparison](build/driving_data/gps_distance_methods.png)
+
+Three GPS-derived speed traces overlaid (Haversine, Pythagorean lat/lon, Pythagorean UTM). The lower panel shows pairwise deltas — typically below 0.025 m/s, three orders of magnitude under GPS noise. The takeaway is "the choice between these three doesn't matter for accuracy at car-segment scale; pick the one that matches your coordinate frame."
+
+### `build/driving_data/yaw_complementary_filter.png` and `yaw_four_panel.png`
+
+Two complementary views of the legacy `yaw_fused` filter. The two-panel version shows LPF(mag) and HPF(gyro) separately and then their sum (the fused yaw). The four-panel adds the VN-100 onboard quaternion yaw as an independent reference. Both make the magnetometer-drift problem visible: the LPF mag yaw is fairly stable in the middle of the drive but drifts at the ends, where the Kalman filter would be relying on GPS instead.
 
 ---
 
