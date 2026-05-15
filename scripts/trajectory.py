@@ -64,13 +64,14 @@ def main():
     parser.add_argument("dataset")
     parser.add_argument("--build", type=Path, default=BUILD_DIR)
     parser.add_argument("--yaw-source",
-                        choices=["fused", "quat", "gps", "kalman", "rts"], default="fused",
+                        choices=["fused", "quat", "gps", "kalman", "rts"], default="kalman",
                         help="Heading source from build/<dataset>/yaw.csv: "
-                             "'fused' = complementary mag/gyro (default); "
-                             "'quat' = VN-100 onboard quaternion (sign-flipped here for parity); "
-                             "'gps' = complementary GPS-course/gyro (Option 1); "
-                             "'kalman' = forward Kalman filter (mag + GPS); "
-                             "'rts' = Kalman + RTS backward smoother — optimal post-drive")
+                             "'kalman' (default) = forward Kalman filter (mag + GPS), "
+                             "best post-drive trajectory on driving_data (mean err 260 m); "
+                             "'fused' = legacy complementary mag/gyro (mean err 763 m); "
+                             "'quat' = VN-100 onboard quaternion; "
+                             "'gps' = complementary GPS-course/gyro (best endpoint, wanders mid-drive); "
+                             "'rts' = Kalman + RTS backward smoother (experimental, sensitive to noise tuning)")
     args = parser.parse_args()
 
     out_dir = args.build / args.dataset

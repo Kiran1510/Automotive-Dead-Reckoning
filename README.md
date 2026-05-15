@@ -125,10 +125,10 @@ for d in data/*/; do .venv/bin/python scripts/bag_to_csv.py "$d"; done
 
 | `--yaw-source` | mean (m) | max (m) | final (m) | Notes |
 |---|---|---|---|---|
-| `fused` (default) | 763 | 2454 | 263 | LPF(magnetometer) + HPF(gyro) |
+| **`kalman`** (default) | **260** | **425** | 325 | Kalman with mag + GPS observations — best for post-drive |
+| `fused` | 763 | 2454 | 263 | Legacy: LPF(magnetometer) + HPF(gyro) |
 | `quat` | 508 | 1316 | 1294 | VN-100 onboard sensor fusion |
 | `gps` | 2279 | 4387 | **58** | GPS course / gyro complementary — excellent endpoint, wanders mid-drive |
-| **`kalman`** | **260** | **425** | 325 | Kalman with mag + GPS observations — best for post-drive |
 | `rts` | 1710 | 3136 | 209 | Kalman + RTS smoother (experimental — sensitive to noise-parameter tuning on long sequences) |
 
 Every analysis script prints a side-by-side new-vs-old numeric comparison so any refactor is held to the "match or exceed previous outputs" standard.
