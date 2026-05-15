@@ -1,0 +1,38 @@
+rosbag2_bagfile_information:
+  compression_format: ''
+  compression_mode: ''
+  custom_data: null
+  duration:
+    nanoseconds: 4997047155
+  files:
+  - duration:
+      nanoseconds: 4997047155
+    message_count: 206
+    path: driving_tiny.mcap
+    starting_time:
+      nanoseconds_since_epoch: 1763590342744295610
+  message_count: 206
+  relative_file_paths:
+  - driving_tiny.mcap
+  ros_distro: rosbags
+  starting_time:
+    nanoseconds_since_epoch: 1763590342744295610
+  storage_identifier: mcap
+  topics_with_message_count:
+  - message_count: 201
+    topic_metadata:
+      name: /imu
+      offered_qos_profiles: []
+      serialization_format: cdr
+      type: vn_interface/msg/Vectornav
+      type_description_hash: 
+        RIHS01_14c3c497100e75f72c557600a47e2675d36758b6dbd3478e940e5d8b46da7674
+  - message_count: 5
+    topic_metadata:
+      name: /gps
+      offered_qos_profiles: []
+      serialization_format: cdr
+      type: gps_interface/msg/Customgps
+      type_description_hash: 
+        RIHS01_f07db1122539173a4aa4066187d078fc652586824a0eea6ee314ce3ec0847c0a
+  version: 9

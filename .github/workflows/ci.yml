@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Convert fixture bag to CSV
+        run: python scripts/bag_to_csv.py tests/fixtures/driving_tiny --out build/driving_tiny
+
+      - name: Run yaw stage
+        run: python scripts/yaw.py driving_tiny --calibration tests/fixtures/calibration.json
+
+      - name: Run velocity stage (default UTM)
+        run: python scripts/velocity.py driving_tiny --calibration tests/fixtures/calibration.json
+
+      - name: Run velocity stage (--gps-method haversine)
+        run: python scripts/velocity.py driving_tiny --calibration tests/fixtures/calibration.json --gps-method haversine
+
+      - name: Run dead-reckoning consistency check
+        run: python scripts/dead_reckon.py driving_tiny --calibration tests/fixtures/calibration.json
+
+      - name: Run trajectory stage
+        run: python scripts/trajectory.py driving_tiny
+
+      - name: Assert all expected outputs exist
+        run: |
+          set -e
+          for f in \
+            build/driving_tiny/imu.csv \
+            build/driving_tiny/gps.csv \
+            build/driving_tiny/yaw.csv \
+            build/driving_tiny/yaw_raw_vs_calibrated.png \
+            build/driving_tiny/yaw_gyro_vs_magnetometer.png \
+            build/driving_tiny/yaw_complementary_filter.png \
+            build/driving_tiny/yaw_four_panel.png \
+            build/driving_tiny/velocity.csv \
+            build/driving_tiny/gps_distance_methods.csv \
+            build/driving_tiny/velocity_three_panel.png \
+            build/driving_tiny/gps_distance_methods.png \
+            build/driving_tiny/dead_reckoning_comparison.png \
+            build/driving_tiny/trajectory.csv \
+            build/driving_tiny/trajectory_imu_vs_gps.png
+          do
+            if [ ! -s "$f" ]; then
+              echo "MISSING OR EMPTY: $f"
+              exit 1
+            fi
+            echo "ok: $f"
+          done
+
+      - name: Sanity-check converter output schema
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          imu = pd.read_csv("build/driving_tiny/imu.csv")
+          gps = pd.read_csv("build/driving_tiny/gps.csv")
+          expected_imu = {"t", "frame_id", "quat_x", "quat_y", "quat_z", "quat_w",
+                          "gyro_x", "gyro_y", "gyro_z", "acc_x", "acc_y", "acc_z",
+                          "mag_x", "mag_y", "mag_z", "raw_vnymr"}
+          expected_gps = {"t", "frame_id", "latitude", "longitude", "altitude",
+                          "utm_easting", "utm_northing", "zone", "letter", "hdop", "raw_gpgga"}
+          missing_imu = expected_imu - set(imu.columns)
+          missing_gps = expected_gps - set(gps.columns)
+          assert not missing_imu, f"imu.csv missing columns: {missing_imu}"
+          assert not missing_gps, f"gps.csv missing columns: {missing_gps}"
+          assert len(imu) > 50, f"imu.csv has only {len(imu)} rows"
+          assert len(gps) >= 3, f"gps.csv has only {len(gps)} rows"
+          print(f"schema OK: imu={len(imu)} rows, gps={len(gps)} rows")
+          PY

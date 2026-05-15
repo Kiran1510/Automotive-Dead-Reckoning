@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "magnetometer": {
+    "hard_iron_offset_tesla_xy": [
+      1.938415238022872e-05,
+      1.254708185660326e-05
+    ],
+    "soft_iron_matrix_2d": [
+      [
+        1.0003008649900025,
+        0.005713272766859625
+      ],
+      [
+        0.00571327276685968,
+        0.9997645596529302
+      ]
+    ],
+    "source": "circle_data",
+    "method": "Fitzgibbon-Pilu-Fisher direct ellipse fit",
+    "ellipse_semi_axes_tesla": [
+      2.1813034911481108e-05,
+      2.2063984040642274e-05
+    ],
+    "ellipse_rotation_rad": 0.7619478543522429,
+    "target_radius_tesla": 2.1938509476061693e-05,
+    "residual_radius_std_tesla": 8.866167046817887e-07
+  },
+  "gyroscope": {
+    "bias_rad_s": [
+      -0.00010516091954022988,
+      4.977298850574714e-05,
+      -1.957183908045977e-05
+    ],
+    "source": "idle_car",
+    "samples": 696,
+    "duration_s": 17.3684241771698
+  },
+  "accelerometer": {
+    "at_rest_m_s2": [
+      0.6497068965517242,
+      -0.33882183908045976,
+      -9.628991379310346
+    ],
+    "bias_m_s2": [
+      0.6497068965517242,
+      -0.33882183908045976,
+      0.17765862068965355
+    ],
+    "gravity_assumed_m_s2": 9.80665,
+    "magnitude_m_s2": 9.656831482059616,
+    "pitch_deg": 3.8577461182117743,
+    "roll_deg": 2.0107057563322983,
+    "total_tilt_deg": 4.351711674374195,
+    "g_scale_error_pct": -1.527723717481339,
+    "tilt_consistency_pitch_spread_deg": 1.0965701178403577,
+    "tilt_consistency_roll_spread_deg": 2.924009230429829,
+    "source": "idle_car"
+  },
+  "diagnostics": {
+    "engine_induced_mag_offset_tesla": [
+      8.265582346769395e-06,
+      -3.142850151899506e-07,
+      -3.0011346659776427e-06
+    ],
+    "engine_on_mean_tesla": [
+      4.085341280653951e-05,
+      1.9066246594005452e-05,
+      3.728209809264305e-05
+    ],
+    "idle_car_mean_tesla": [
+      3.2587830459770116e-05,
+      1.9380531609195403e-05,
+      4.0283232758620693e-05
+    ]
+  }
+}
