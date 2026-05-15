@@ -17,33 +17,87 @@ This project integrates VectorNav VN-100 IMU and BU-353N GPS data to implement 2
 ## Technical Approach
 
 ### Sensors Used
-- **VectorNav VN-100**: 9-axis IMU providing acceleration, angular velocity, and magnetic field measurements
-- **BU-353N GPS**: Position and velocity data with ~2.5m accuracy
+- **VectorNav VN-100**: 9-axis IMU at 40 Hz (acceleration, angular velocity, magnetic field, and onboard quaternion)
+- **BU-353N GPS**: position, UTM coordinates, and velocity at 1 Hz with ~2.5 m accuracy
 
 ### Methods
-- Quaternion-based orientation tracking from IMU
-- Magnetometer/gyroscope fusion for heading estimation
-- Velocity estimation from accelerometer data with bias compensation
-- GPS/IMU complementary filter for position correction
-- Dead reckoning comparison against ground truth GPS
+- Hard- and soft-iron magnetometer calibration via Fitzgibbon-Pilu-Fisher direct ellipse fit on the `circle_data` recording
+- Gyroscope and accelerometer bias estimation from a truly stationary `idle_car` window, with three-window tilt-consistency verification
+- Magnetometer / gyroscope complementary fusion for heading estimation (0.10 Hz Butterworth, order 2)
+- Velocity estimation: 1 Hz GPS speed (UTM by default; Haversine and lat/lon-Pythagorean available as alternatives) fused with 40 Hz integrated accelerometer via the same complementary filter
+- Dead reckoning by projecting fused speed onto fused heading, comparing against ground-truth GPS UTM trajectory
 
 ## Results
 
 Robust tracking for upto 30 seconds before needing GPS corrections. Useful in GPS denied areas such as tunnels, underpasses, and occluded city blocks.
 
+## Pipeline
+
+The analysis runs as a sequence of stages, each reading from a known location and emitting predictable artifacts.
+
+```
+data/<dataset>/*.mcap                              raw ROS2 bag (drop new datasets here)
+        │
+        ▼   scripts/bag_to_csv.py
+build/<dataset>/{imu.csv, gps.csv}                 flat CSVs with quaternion preserved
+        │
+        ▼   scripts/calibration.py
+config/calibration.json                            hard/soft iron, biases, tilt
+        │
+        ▼   scripts/yaw.py <dataset>
+build/<dataset>/yaw.csv + four yaw plots
+        │
+        ▼   scripts/velocity.py <dataset>
+build/<dataset>/velocity.csv + 3-panel plot
+        │
+        ▼   (planned) scripts/dead_reckon.py, scripts/trajectory.py
+build/<dataset>/trajectory_imu_vs_gps.png          final NE-frame result
+```
+
+The bag converter automatically loads the custom `vn_interface/Vectornav` and `gps_interface/Customgps` message types embedded in the bag itself — no ROS environment required.
+
 ## Repository Structure
 ```
-├── circle_data/          # Circular trajectory test data
-    ├── *.py             # Calibration scripts
-    ├── *.csv            # GPS and IMU sensor logs
-    └── *.png            # Result plots
-├── driving_data/         # Real-world driving dataset
-│   ├── *.py             # Analysis and visualization scripts
-│   ├── *.csv            # GPS and IMU sensor logs
-│   └── *.png            # Result plots
-├── Lab5 Report.pdf      # Detailed technical report
+├── data/                              # raw .mcap bags (gitignored; drop new datasets here)
+│   ├── circle_data/                   # car driving in circles for hard/soft iron calibration
+│   ├── driving_data/                  # the main 41-minute Boston drive
+│   ├── engine_on/                     # stationary, engine on (diagnostic for engine magnetic offset)
+│   └── idle_car/                      # stationary, engine off (gyro & acc bias source)
+├── build/                             # generated CSVs and plots (gitignored)
+├── config/
+│   └── calibration.json               # produced by scripts/calibration.py
+├── scripts/
+│   ├── bag_to_csv.py                  # .mcap → imu.csv + gps.csv (preserves quaternion)
+│   ├── inspect_bag.py                 # dump schema of any bag
+│   ├── calibration.py                 # hard/soft iron + gyro/acc bias + tilt analysis
+│   ├── yaw.py                         # mag/gyro/quaternion yaw + complementary filter
+│   └── velocity.py                    # GPS speed (UTM/Haversine/Pyth) + IMU + complementary
+├── circle_data/, driving_data/        # original lab outputs preserved for reference
+├── requirements.txt
+├── Lab5 Report.pdf
 └── README.md
 ```
+
+## Running
+
+```bash
+# one-time setup
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+
+# convert every bag to CSV
+for d in data/*/; do .venv/bin/python scripts/bag_to_csv.py "$d"; done
+
+# produce calibration constants (writes config/calibration.json)
+.venv/bin/python scripts/calibration.py
+
+# run the analysis stages on a dataset (default: driving_data)
+.venv/bin/python scripts/yaw.py driving_data
+.venv/bin/python scripts/velocity.py driving_data
+# Optional: switch GPS distance method for the comparative study
+.venv/bin/python scripts/velocity.py driving_data --gps-method haversine
+```
+
+Every analysis script prints a side-by-side new-vs-old numeric comparison so any refactor is held to the "match or exceed previous outputs" standard.
 
 ## Documentation
 
@@ -51,10 +105,10 @@ Robust tracking for upto 30 seconds before needing GPS corrections. Useful in GP
 
 ## Technologies
 
-- Python (NumPy, Pandas, Matplotlib)
-- ROS2 (for sensor data collection)
-- Sensor fusion algorithms (Complementary filter, Kalman filter)
-- GPS/IMU integration techniques
+- Python (NumPy, Pandas, SciPy, Matplotlib)
+- ROS2 Jazzy (sensor recording, `.mcap` storage); `rosbags` for offline decoding without a ROS install
+- Sensor fusion algorithms (complementary filter)
+- GPS/IMU integration with UTM projection for the trajectory frame
 
 ## Applications
 
