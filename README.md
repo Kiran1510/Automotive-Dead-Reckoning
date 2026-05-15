@@ -33,15 +33,25 @@ Robust tracking for upto 30 seconds before needing GPS corrections. Useful in GP
 
 ## Repository Structure
 ```
-├── circle_data/          # Circular trajectory test data
-    ├── *.py             # Calibration scripts
-    ├── *.csv            # GPS and IMU sensor logs
-    └── *.png            # Result plots
-├── driving_data/         # Real-world driving dataset
-│   ├── *.py             # Analysis and visualization scripts
-│   ├── *.csv            # GPS and IMU sensor logs
-│   └── *.png            # Result plots
-├── Lab5 Report.pdf      # Detailed technical report
+├── circle_data/                            # Circular trajectory test data
+│   ├── circle_calibration.py               # Hard/soft iron magnetometer calibration
+│   ├── circle_data_0_gps.csv               # GPS log
+│   ├── circle_data_0_imu.csv               # IMU log
+│   └── magnetometer_calibration.png        # Calibration result plot
+├── driving_data/                           # Real-world driving dataset
+│   ├── extract_quaternion_yaw.py           # Pulls onboard quaternion from .mcap → CSV
+│   ├── yaw_angle_magnetometer.py           # Raw vs calibrated magnetometer yaw
+│   ├── gyro_magnetometer_yaw.py            # Gyro-integrated vs magnetometer yaw
+│   ├── complementary_filter.py             # LPF(mag) + HPF(gyro) yaw fusion
+│   ├── yaw_four_panel_comparison.py        # Four-panel yaw comparison plot
+│   ├── velocity_estimate_imu.py            # GPS + IMU complementary velocity filter
+│   ├── dead_reckon_comparison.py           # ωẊ vs ÿ_obs consistency check
+│   ├── trajectory_dead_reckoning.py        # 2D trajectory in NE frame vs GPS truth
+│   ├── driving_data_0_gps.csv              # GPS log
+│   ├── driving_data_0_imu.csv              # IMU log
+│   ├── imu_heading_data.csv                # Cached onboard quaternion-derived yaw
+│   └── *.png                               # Result plots
+├── Lab5 Report.pdf                         # Detailed technical report
 └── README.md
 ```
 

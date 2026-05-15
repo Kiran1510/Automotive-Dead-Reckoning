@@ -3,8 +3,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import linalg
 
+# Constants
+TESLA_TO_MILLIGAUSS = 1e7
+INPUT_CSV = 'circle_data_0_imu.csv'
+OUTPUT_FIGURE = 'magnetometer_calibration.png'
+
 # Reading CSV file
-df = pd.read_csv('circle_data_0_imu.csv')
+df = pd.read_csv(INPUT_CSV)
 
 # Extracting magnetometer data (X and Y only)
 mag_x = df['mag_x'].values
@@ -18,9 +23,7 @@ print(f"X: min={mag_x.min():.6f}, max={mag_x.max():.6f}, range={mag_x.max()-mag_
 print(f"Y: min={mag_y.min():.6f}, max={mag_y.max():.6f}, range={mag_y.max()-mag_y.min():.6f}")
 
 # Converting tesla to milliGauss
-scale_factor = 1e7
-
-mag_raw_mG = mag_raw * scale_factor
+mag_raw_mG = mag_raw * TESLA_TO_MILLIGAUSS
 
 print(f"\nraw data in milliGauss:")
 print(f"X: min={mag_raw_mG[:, 0].min():.2f}, max={mag_raw_mG[:, 0].max():.2f}, range={mag_raw_mG[:, 0].max()-mag_raw_mG[:, 0].min():.2f}")
@@ -134,10 +137,10 @@ circle = plt.Circle((0, 0), expected_radius, fill=False,
 plt.gca().add_patch(circle)
 
 plt.tight_layout()
-plt.savefig('fig_0.png', dpi=300, bbox_inches='tight')
+plt.savefig(OUTPUT_FIGURE, dpi=300, bbox_inches='tight')
 
 print("\n" + "="*70)
-print("plot saved as 'fig_0.png'")
+print(f"plot saved as '{OUTPUT_FIGURE}'")
 print("="*70)
 
 print("\n" + "="*70)
