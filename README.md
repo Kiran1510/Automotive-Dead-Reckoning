@@ -84,7 +84,7 @@ The bag converter automatically loads the custom `vn_interface/Vectornav` and `g
 │   ├── driving_tiny/                  # 5-sec slice of driving_data for CI
 │   └── calibration.json               # pinned calibration snapshot for CI
 ├── .github/workflows/ci.yml           # runs the full pipeline on every push/PR
-├── circle_data/, driving_data/        # original lab outputs preserved for reference
+├── circle_data/, driving_data/        # original lab outputs (renamed-and-cleaned-up by the refactor branch, preserved for reference)
 ├── requirements.txt
 ├── Lab5 Report.pdf
 └── README.md

@@ -3,8 +3,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import integrate, signal
 
+# Constants
+INPUT_CSV = 'driving_data_0_imu.csv'
+IMU_HEADING_CSV = 'imu_heading_data.csv'
+OUTPUT_FIGURE = 'yaw_four_panel_comparison.png'
+BUTTERWORTH_ORDER = 2
+COMPLEMENTARY_CUTOFF_HZ = 0.1
+
+# Calibration parameters from circle_data/circle_calibration.py (Tesla units)
+HARD_IRON_OFFSET = np.array([0.00001978, 0.00001289])
+SOFT_IRON_MATRIX = np.array([[1.00017403, -0.00836799],
+                             [-0.00836799, 0.99996603]])
+
 # Reading driving data from csv file
-df = pd.read_csv('driving_data_0_imu.csv')
+df = pd.read_csv(INPUT_CSV)
 
 mag_x = df['mag_x'].values
 mag_y = df['mag_y'].values
@@ -13,7 +25,7 @@ timestamps = df['t'].values
 timestamps = timestamps - timestamps[0]
 
 # Reading IMU heading data
-df_imu_heading = pd.read_csv('imu_heading_data.csv')
+df_imu_heading = pd.read_csv(IMU_HEADING_CSV)
 imu_yaw = df_imu_heading['imu_yaw'].values
 imu_time = df_imu_heading['time'].values
 imu_time = imu_time - imu_time[0]
@@ -22,14 +34,10 @@ imu_time = imu_time - imu_time[0]
 gyro_bias = np.mean(gyro_z)
 gyro_z_corrected = gyro_z - gyro_bias
 
-# Magnetometer calibration using calibration values 
-hard_iron_offset = np.array([0.00001978, 0.00001289])
-soft_iron_matrix = np.array([[1.00017403, -0.00836799],
-                              [-0.00836799, 0.99996603]])
-
+# Magnetometer calibration
 mag_raw = np.column_stack([mag_x, mag_y])
-mag_centered = mag_raw - hard_iron_offset
-mag_calibrated = (soft_iron_matrix @ mag_centered.T).T
+mag_centered = mag_raw - HARD_IRON_OFFSET
+mag_calibrated = (SOFT_IRON_MATRIX @ mag_centered.T).T
 
 # Calculating calibrated yaw from magnetometer
 yaw_mag = np.arctan2(mag_calibrated[:, 1], mag_calibrated[:, 0])
@@ -41,18 +49,16 @@ yaw_gyro = yaw_gyro - yaw_gyro[0] + yaw_mag_unwrapped[0]
 
 # Complementary filter
 fs = 1 / np.mean(np.diff(timestamps))
-order = 2
 nyq = 0.5 * fs
-cutoff = 0.1
 
 # Low pass filter for magnetometer
-lpf_norm = cutoff / nyq
-b_lpf, a_lpf = signal.butter(order, lpf_norm, btype='low')
+lpf_norm = COMPLEMENTARY_CUTOFF_HZ / nyq
+b_lpf, a_lpf = signal.butter(BUTTERWORTH_ORDER, lpf_norm, btype='low')
 yaw_mag_lpf = signal.filtfilt(b_lpf, a_lpf, yaw_mag_unwrapped)
 
 # High pass filter for gyroscope
-hpf_norm = cutoff / nyq
-b_hpf, a_hpf = signal.butter(order, hpf_norm, btype='high')
+hpf_norm = COMPLEMENTARY_CUTOFF_HZ / nyq
+b_hpf, a_hpf = signal.butter(BUTTERWORTH_ORDER, hpf_norm, btype='high')
 yaw_gyro_hpf = signal.filtfilt(b_hpf, a_hpf, yaw_gyro)
 
 # Fused yaw
@@ -61,7 +67,7 @@ yaw_fused = yaw_mag_lpf + yaw_gyro_hpf
 # Aligning IMU yaw with fused yaw
 imu_yaw_aligned = imu_yaw - imu_yaw[0] + yaw_fused[0]
 
-print(f"cutoff frequency: {cutoff} Hz")
+print(f"cutoff frequency: {COMPLEMENTARY_CUTOFF_HZ} Hz")
 
 # Creating 4 subplots
 fig, axes = plt.subplots(4, 1, figsize=(14, 14))
@@ -92,6 +98,6 @@ axes[3].set_title('IMU heading estimate')
 axes[3].grid(True, alpha=0.3)
 
 plt.tight_layout()
-plt.savefig('fig_3.png', dpi=300, bbox_inches='tight')
+plt.savefig(OUTPUT_FIGURE, dpi=300, bbox_inches='tight')
 
-print("\nplot saved as 'fig_3.png'")
+print(f"\nplot saved as '{OUTPUT_FIGURE}'")

@@ -3,8 +3,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import integrate
 
+# Constants
+INPUT_CSV = 'driving_data_0_imu.csv'
+OUTPUT_FIGURE = 'yaw_gyro_vs_magnetometer.png'
+
+# Calibration parameters from circle_data/circle_calibration.py (Tesla units)
+HARD_IRON_OFFSET = np.array([0.00001978, 0.00001289])
+SOFT_IRON_MATRIX = np.array([[1.00017403, -0.00836799],
+                             [-0.00836799, 0.99996603]])
+
 # Reading the driving data from csv
-df = pd.read_csv('driving_data_0_imu.csv')
+df = pd.read_csv(INPUT_CSV)
 
 mag_x = df['mag_x'].values
 mag_y = df['mag_y'].values
@@ -17,13 +26,9 @@ gyro_bias = np.mean(gyro_z)
 gyro_z_corrected = gyro_z - gyro_bias
 
 # Applying magnetometer calibration
-hard_iron_offset = np.array([0.00001978, 0.00001289])
-soft_iron_matrix = np.array([[1.00017403, -0.00836799],
-                              [-0.00836799, 0.99996603]])
-
 mag_raw = np.column_stack([mag_x, mag_y])
-mag_centered = mag_raw - hard_iron_offset
-mag_calibrated = (soft_iron_matrix @ mag_centered.T).T
+mag_centered = mag_raw - HARD_IRON_OFFSET
+mag_calibrated = (SOFT_IRON_MATRIX @ mag_centered.T).T
 
 # Calculating calibrated yaw from magnetometer and unwrapping (prevents discontinuities/artifacts in the plot)
 yaw_calibrated = np.arctan2(mag_calibrated[:, 1], mag_calibrated[:, 0])
@@ -48,6 +53,6 @@ plt.title('yaw from gyro and magnetometer')
 plt.legend()
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
-plt.savefig('fig_2.png', dpi=300, bbox_inches='tight')
+plt.savefig(OUTPUT_FIGURE, dpi=300, bbox_inches='tight')
 
-print("\nplot saved as fig_2.png")
+print(f"\nplot saved as '{OUTPUT_FIGURE}'")

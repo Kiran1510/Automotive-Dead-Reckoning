@@ -3,8 +3,23 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import integrate, signal
 
+# Constants
+INPUT_IMU_CSV = 'driving_data_0_imu.csv'
+INPUT_GPS_CSV = 'driving_data_0_gps.csv'
+OUTPUT_FIGURE = 'trajectory_imu_vs_gps.png'
+STATIONARY_WINDOW_S = 10
+VELOCITY_CUTOFF_HZ = 0.10
+YAW_CUTOFF_HZ = 0.1
+BUTTERWORTH_ORDER = 2
+EARTH_RADIUS_M = 6_371_000
+
+# Calibration parameters from circle_data/circle_calibration.py (Tesla units)
+HARD_IRON_OFFSET = np.array([0.00001978, 0.00001289])
+SOFT_IRON_MATRIX = np.array([[1.00017403, -0.00836799],
+                             [-0.00836799, 0.99996603]])
+
 # Reading driving data from csv
-df = pd.read_csv('driving_data_0_imu.csv')
+df = pd.read_csv(INPUT_IMU_CSV)
 
 acc_x = df['acc_x'].values
 mag_x = df['mag_x'].values
@@ -14,14 +29,14 @@ timestamps = df['t'].values
 timestamps = timestamps - timestamps[0]
 
 # Getting fused velocity
-stationary_mask = timestamps < 10
+stationary_mask = timestamps < STATIONARY_WINDOW_S
 acc_x_bias = np.mean(acc_x[stationary_mask])
 acc_x_corrected = acc_x - acc_x_bias
 
 vel_imu_raw = integrate.cumulative_trapezoid(acc_x_corrected, timestamps, initial=0)
 
 # Calculating GPS velocity
-gps_df = pd.read_csv('driving_data_0_gps.csv')
+gps_df = pd.read_csv(INPUT_GPS_CSV)
 
 lat = np.radians(gps_df['latitude'].values)
 lon = np.radians(gps_df['longitude'].values)
@@ -33,17 +48,16 @@ utm_easting = gps_df['utm_easting'].values
 utm_northing = gps_df['utm_northing'].values
 
 # calculating GPS velocity using haversine formula
-R = 6371000
 vel_gps = np.zeros(len(lat))
 
 for i in range(1, len(lat)):
     dlat = lat[i] - lat[i-1]
     dlon = lon[i] - lon[i-1]
-    
+
     a = np.sin(dlat/2)**2 + np.cos(lat[i-1]) * np.cos(lat[i]) * np.sin(dlon/2)**2
     c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1-a))
-    distance = R * c
-    
+    distance = EARTH_RADIUS_M * c
+
     dt = gps_time[i] - gps_time[i-1]
     if dt > 0:
         vel_gps[i] = distance / dt
@@ -53,27 +67,22 @@ vel_gps_interp = np.interp(timestamps, gps_time, vel_gps)
 # Fusing GPS and IMU velocity using filter
 fs = 1 / np.mean(np.diff(timestamps))
 nyq = 0.5 * fs
-cutoff_vel = 0.10
 
-lpf_norm = cutoff_vel / nyq
-b_lpf, a_lpf = signal.butter(2, lpf_norm, btype='low')
+lpf_norm = VELOCITY_CUTOFF_HZ / nyq
+b_lpf, a_lpf = signal.butter(BUTTERWORTH_ORDER, lpf_norm, btype='low')
 vel_gps_lpf = signal.filtfilt(b_lpf, a_lpf, vel_gps_interp)
 
-hpf_norm = cutoff_vel / nyq
-b_hpf, a_hpf = signal.butter(2, hpf_norm, btype='high')
+hpf_norm = VELOCITY_CUTOFF_HZ / nyq
+b_hpf, a_hpf = signal.butter(BUTTERWORTH_ORDER, hpf_norm, btype='high')
 vel_imu_hpf = signal.filtfilt(b_hpf, a_hpf, vel_imu_raw)
 
 vel_fused = vel_gps_lpf + vel_imu_hpf
 vel_fused[vel_fused < 0] = 0
 
 # Getting fused yaw
-hard_iron_offset = np.array([0.00001978, 0.00001289])
-soft_iron_matrix = np.array([[1.00017403, -0.00836799],
-                              [-0.00836799, 0.99996603]])
-
 mag_raw = np.column_stack([mag_x, mag_y])
-mag_centered = mag_raw - hard_iron_offset
-mag_calibrated = (soft_iron_matrix @ mag_centered.T).T
+mag_centered = mag_raw - HARD_IRON_OFFSET
+mag_calibrated = (SOFT_IRON_MATRIX @ mag_centered.T).T
 
 yaw_mag = np.arctan2(mag_calibrated[:, 1], mag_calibrated[:, 0])
 yaw_mag_unwrapped = np.unwrap(yaw_mag)
@@ -84,13 +93,12 @@ gyro_z_corrected = gyro_z - gyro_bias
 yaw_gyro = integrate.cumulative_trapezoid(gyro_z_corrected, timestamps, initial=0)
 yaw_gyro = yaw_gyro - yaw_gyro[0] + yaw_mag_unwrapped[0]
 
-cutoff_yaw = 0.1
-lpf_norm_yaw = cutoff_yaw / nyq
-b_lpf_yaw, a_lpf_yaw = signal.butter(2, lpf_norm_yaw, btype='low')
+lpf_norm_yaw = YAW_CUTOFF_HZ / nyq
+b_lpf_yaw, a_lpf_yaw = signal.butter(BUTTERWORTH_ORDER, lpf_norm_yaw, btype='low')
 yaw_mag_lpf = signal.filtfilt(b_lpf_yaw, a_lpf_yaw, yaw_mag_unwrapped)
 
-hpf_norm_yaw = cutoff_yaw / nyq
-b_hpf_yaw, a_hpf_yaw = signal.butter(2, hpf_norm_yaw, btype='high')
+hpf_norm_yaw = YAW_CUTOFF_HZ / nyq
+b_hpf_yaw, a_hpf_yaw = signal.butter(BUTTERWORTH_ORDER, hpf_norm_yaw, btype='high')
 yaw_gyro_hpf = signal.filtfilt(b_hpf_yaw, a_hpf_yaw, yaw_gyro)
 
 yaw_fused = yaw_mag_lpf + yaw_gyro_hpf
@@ -136,8 +144,8 @@ plt.grid(True, alpha=0.3)
 plt.axis('equal')
 plt.tight_layout()
 
-plt.savefig('fig_6.png', dpi=300, bbox_inches='tight')
+plt.savefig(OUTPUT_FIGURE, dpi=300, bbox_inches='tight')
 
-print("\nplot saved as 'fig_6.png'")
+print(f"\nplot saved as '{OUTPUT_FIGURE}'")
 print(f"IMU trajectory range: E=[{xe_rotated.min():.1f}, {xe_rotated.max():.1f}], N=[{xn_rotated.min():.1f}, {xn_rotated.max():.1f}]")
 print(f"GPS trajectory range: E=[{easting_zeroed.min():.1f}, {easting_zeroed.max():.1f}], N=[{northing_zeroed.min():.1f}, {northing_zeroed.max():.1f}]")

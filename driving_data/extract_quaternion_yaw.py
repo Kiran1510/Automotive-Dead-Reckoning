@@ -5,13 +5,17 @@ from scipy.spatial.transform import Rotation
 import pandas as pd
 import numpy as np
 
+# Constants
+INPUT_MCAP = Path('driving_data_0.mcap')
+OUTPUT_CSV = 'imu_heading_data.csv'
+IMU_TOPIC = '/imu'
+
 # Directly reading from .mcap file for quaternion data
 
-mcappath = Path('driving_data_0.mcap')
 typestore = get_typestore(Stores.ROS2_HUMBLE)
 
-with AnyReader([mcappath], default_typestore=typestore) as reader:
-    imu_connections = [x for x in reader.connections if x.topic == '/imu']
+with AnyReader([INPUT_MCAP], default_typestore=typestore) as reader:
+    imu_connections = [x for x in reader.connections if x.topic == IMU_TOPIC]
     
     for connection, timestamp, rawdata in reader.messages(connections=imu_connections):
         msg = reader.deserialize(rawdata, connection.msgtype)
@@ -53,11 +57,11 @@ with AnyReader([mcappath], default_typestore=typestore) as reader:
             imu_yaw_unwrapped = np.unwrap(imu_yaw)
             
             df_imu['imu_yaw'] = imu_yaw_unwrapped
-            df_imu.to_csv('imu_heading_data.csv', index=False)
-            
+            df_imu.to_csv(OUTPUT_CSV, index=False)
+
             print(f"\nextracted {len(imu_yaw)} IMU heading estimates")
             print(f"IMU yaw range: {imu_yaw_unwrapped.min():.2f} to {imu_yaw_unwrapped.max():.2f} rad")
-            print("saved to imu_heading_data.csv")
+            print(f"saved to {OUTPUT_CSV}")
         else:
             print("no orientation in msg.imu")
             print("msg.imu type:", type(msg.imu))
