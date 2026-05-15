@@ -63,9 +63,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("dataset")
     parser.add_argument("--build", type=Path, default=BUILD_DIR)
-    parser.add_argument("--yaw-source", choices=["fused", "quat"], default="fused",
-                        help="Heading source: 'fused' = complementary mag/gyro (default), "
-                             "'quat' = VN-100 onboard quaternion (independent reference)")
+    parser.add_argument("--yaw-source",
+                        choices=["fused", "quat", "gps", "kalman", "rts"], default="fused",
+                        help="Heading source from build/<dataset>/yaw.csv: "
+                             "'fused' = complementary mag/gyro (default); "
+                             "'quat' = VN-100 onboard quaternion (sign-flipped here for parity); "
+                             "'gps' = complementary GPS-course/gyro (Option 1); "
+                             "'kalman' = forward Kalman filter (mag + GPS); "
+                             "'rts' = Kalman + RTS backward smoother — optimal post-drive")
     args = parser.parse_args()
 
     out_dir = args.build / args.dataset
@@ -79,13 +84,19 @@ def main():
     utm_n = gps["utm_northing"].to_numpy()
     t_gps = gps["t"].to_numpy() - gps["t"].iloc[0]
 
-    # Pick heading source. yaw_quat is from the VN-100's onboard sensor fusion;
-    # we negate it because it uses NED-style CW-positive convention vs yaw_fused's
-    # math CCW-positive. After this flip the two yaw streams are directly comparable.
+    # Pick heading source from yaw.csv.
+    # All sources except yaw_quat are stored in yaw_fused's convention; yaw_quat
+    # is the VN-100's raw onboard output and needs sign-flipping for parity.
     if args.yaw_source == "fused":
         yaw_heading = yaw["yaw_fused"].to_numpy()
-    else:
+    elif args.yaw_source == "quat":
         yaw_heading = -yaw["yaw_quat"].to_numpy()
+    elif args.yaw_source == "gps":
+        yaw_heading = yaw["yaw_gps"].to_numpy()
+    elif args.yaw_source == "kalman":
+        yaw_heading = yaw["yaw_kalman"].to_numpy()
+    elif args.yaw_source == "rts":
+        yaw_heading = yaw["yaw_rts"].to_numpy()
 
     # Project fused velocity onto easting/northing.
     # The yaw signal increases with CW heading change (opposite of math convention),
