@@ -37,10 +37,12 @@ def extract_imu(reader) -> pd.DataFrame:
         acc = imu.linear_acceleration
         rows.append({
             "t": stamp_seconds(msg.header),
+            "frame_id": msg.header.frame_id,
             "quat_x": q.x, "quat_y": q.y, "quat_z": q.z, "quat_w": q.w,
             "gyro_x": gyro.x, "gyro_y": gyro.y, "gyro_z": gyro.z,
             "acc_x": acc.x, "acc_y": acc.y, "acc_z": acc.z,
             "mag_x": mag.x, "mag_y": mag.y, "mag_z": mag.z,
+            "raw_vnymr": msg.raw_string,
         })
     return pd.DataFrame(rows)
 
@@ -55,6 +57,7 @@ def extract_gps(reader) -> pd.DataFrame:
         msg = reader.deserialize(rawdata, conn.msgtype)
         rows.append({
             "t": stamp_seconds(msg.header),
+            "frame_id": msg.header.frame_id,
             "latitude": msg.latitude,
             "longitude": msg.longitude,
             "altitude": msg.altitude,
@@ -63,6 +66,7 @@ def extract_gps(reader) -> pd.DataFrame:
             "zone": msg.zone,
             "letter": msg.letter,
             "hdop": msg.hdop,
+            "raw_gpgga": msg.gpgga_read,
         })
     return pd.DataFrame(rows)
 
