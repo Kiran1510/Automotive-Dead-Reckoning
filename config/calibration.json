@@ -47,6 +47,13 @@
       0.17765862068965355
     ],
     "gravity_assumed_m_s2": 9.80665,
+    "magnitude_m_s2": 9.656831482059616,
+    "pitch_deg": 3.8577461182117743,
+    "roll_deg": 2.0107057563322983,
+    "total_tilt_deg": 4.351711674374195,
+    "g_scale_error_pct": -1.527723717481339,
+    "tilt_consistency_pitch_spread_deg": 1.0965701178403577,
+    "tilt_consistency_roll_spread_deg": 2.924009230429829,
     "source": "idle_car"
   },
   "diagnostics": {

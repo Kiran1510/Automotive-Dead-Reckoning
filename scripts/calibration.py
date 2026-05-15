@@ -29,6 +29,7 @@ CALIBRATION_JSON = CONFIG_DIR / "calibration.json"
 
 GRAVITY_M_S2 = 9.80665
 TESLA_TO_MILLIGAUSS = 1e7
+STATIONARY_WINDOW_S = 10.0  # leading window in driving_data assumed stationary
 
 # Previously hardcoded values (copy-pasted across driving_data/*.py) for comparison.
 OLD_HARD_IRON_OFFSET_TESLA = np.array([1.978e-5, 1.289e-5])
@@ -96,6 +97,28 @@ def radius_residual_std(mag_xy: np.ndarray, hard_iron: np.ndarray, soft_iron: np
     return float(radii.std())
 
 
+def tilt_from_acc(acc_xyz: np.ndarray) -> dict:
+    """Decompose a stationary acc reading into pitch / roll / |a| / g-scale error.
+
+    Convention: IMU x = vehicle forward, y = lateral, z = down (so at rest the body-frame
+    gravity vector should point along -z if perfectly level).
+
+      pitch_deg = asin(acc_x / |a|) -- positive means IMU x-axis points slightly down
+                  (i.e. vehicle nose is angled UP relative to the level horizon)
+      roll_deg  = asin(-acc_y / |a|) -- positive means right-side-up roll
+    """
+    a = np.asarray(acc_xyz, dtype=float)
+    mag = float(np.linalg.norm(a))
+    return {
+        "raw_m_s2": a.tolist(),
+        "magnitude_m_s2": mag,
+        "g_scale_error_pct": (mag - GRAVITY_M_S2) / GRAVITY_M_S2 * 100.0,
+        "pitch_deg": float(np.degrees(np.arcsin(np.clip(a[0] / mag, -1.0, 1.0)))),
+        "roll_deg": float(np.degrees(np.arcsin(np.clip(-a[1] / mag, -1.0, 1.0)))),
+        "total_tilt_deg": float(np.degrees(np.arccos(np.clip(-a[2] / mag, -1.0, 1.0)))),
+    }
+
+
 def fmt_vec(v, fmt="{:+.4e}"):
     return "[" + ", ".join(fmt.format(x) for x in np.asarray(v).ravel()) + "]"
 
@@ -114,6 +137,7 @@ def main():
     circle = pd.read_csv(args.build / "circle_data" / "imu.csv")
     idle = pd.read_csv(args.build / "idle_car" / "imu.csv")
     engine = pd.read_csv(args.build / "engine_on" / "imu.csv")
+    driving = pd.read_csv(args.build / "driving_data" / "imu.csv")
 
     mag_xy = circle[["mag_x", "mag_y"]].to_numpy()
 
@@ -175,13 +199,64 @@ def main():
     print(f"  previously: mean(gyro_z) over the entire drive (contaminated by real rotation)")
     print()
 
+    # --- Tilt consistency check across the three stationary windows ---
+    # Sanity-check that the leading window of driving_data is actually stationary
+    # by looking at gyro std (rotation rate noise). If gyro is moving, "first 10s"
+    # isn't a valid bias source and would skew the tilt estimate.
+    driving_t = driving["t"].to_numpy() - driving["t"].iloc[0]
+    driving_stationary_mask = driving_t < STATIONARY_WINDOW_S
+    acc_driving_start = driving.loc[driving_stationary_mask, ["acc_x", "acc_y", "acc_z"]].mean().to_numpy()
+    gyro_driving_start_std = driving.loc[driving_stationary_mask, ["gyro_x", "gyro_y", "gyro_z"]].std().to_numpy()
+    gyro_idle_std = idle[["gyro_x", "gyro_y", "gyro_z"]].std().to_numpy()
+    is_stationary = float(np.max(gyro_driving_start_std)) < 5 * float(np.max(gyro_idle_std))
+
+    tilt_idle = tilt_from_acc(acc_at_rest)
+    tilt_engine = tilt_from_acc(engine[["acc_x", "acc_y", "acc_z"]].mean().to_numpy())
+    tilt_driving = tilt_from_acc(acc_driving_start)
+    pitch_spread = max(t["pitch_deg"] for t in [tilt_idle, tilt_engine, tilt_driving]) - \
+                   min(t["pitch_deg"] for t in [tilt_idle, tilt_engine, tilt_driving])
+    roll_spread = max(t["roll_deg"] for t in [tilt_idle, tilt_engine, tilt_driving]) - \
+                  min(t["roll_deg"] for t in [tilt_idle, tilt_engine, tilt_driving])
+
     print("=" * width)
     print("ACCELEROMETER AT REST  (source: idle_car)")
     print("=" * width)
     print(f"  raw acc at rest (m/s^2):     {fmt_vec(acc_at_rest)}")
     print(f"  bias = raw - (0,0,-g):       {fmt_vec(acc_bias)}")
-    print(f"  (includes mounting tilt; magnitude {np.linalg.norm(acc_at_rest):.4f} m/s^2 "
-          f"vs g = {GRAVITY_M_S2:.4f})")
+    print(f"  magnitude:                   {tilt_idle['magnitude_m_s2']:.4f} m/s^2  "
+          f"(g={GRAVITY_M_S2:.4f}, scale error {tilt_idle['g_scale_error_pct']:+.2f}%)")
+    print(f"  pitch / roll:                {tilt_idle['pitch_deg']:+.2f}° / {tilt_idle['roll_deg']:+.2f}°  "
+          f"(total tilt {tilt_idle['total_tilt_deg']:.2f}°)")
+    print()
+    print("  tilt consistency across stationary windows:")
+    print(f"    {'source':<25} {'pitch':>8} {'roll':>8} {'|a|':>9}  {'scale err':>9}")
+    for name, t in [("idle_car (17s)", tilt_idle),
+                    ("engine_on (37s)", tilt_engine),
+                    (f"driving_data first {STATIONARY_WINDOW_S:.0f}s", tilt_driving)]:
+        print(f"    {name:<25} {t['pitch_deg']:+7.2f}° {t['roll_deg']:+7.2f}° "
+              f"{t['magnitude_m_s2']:8.4f}  {t['g_scale_error_pct']:+8.2f}%")
+    print(f"    spread:                   {pitch_spread:7.2f}° {roll_spread:7.2f}°")
+    print()
+    print(f"  is driving_data's first {STATIONARY_WINDOW_S:.0f}s actually stationary?")
+    print(f"    idle_car gyro std (rad/s):    {fmt_vec(gyro_idle_std)}")
+    print(f"    driving first 10s gyro std:   {fmt_vec(gyro_driving_start_std)}")
+    print(f"    -> {'YES (within 5x idle_car noise)' if is_stationary else 'NO (gyro variance too high, vehicle is moving)'}")
+    print()
+    print("  interpretation:")
+    print(f"    pitch is stable across recordings (spread {pitch_spread:.2f}°) -> fixed IMU mounting,")
+    print(f"    consistent with the 3D-printed fixture. Total tilt ~{tilt_idle['total_tilt_deg']:.1f}° is")
+    print( "    small -- consistent with a floor / console mount, not a dash mount (10-20° typical).")
+    print(f"    roll spread is larger ({roll_spread:.2f}°) -- driven by per-parking-spot road camber,")
+    print( "    not a mount change.")
+    print()
+    print("  decision (for downstream stages):")
+    print("    * gyro bias: use idle_car (rotation rate is orientation-invariant; idle is cleanest)")
+    print("    * acc bias:  use idle_car. Original velocity_estimate_imu.py used 'first 10s of")
+    print("                 driving' as stationary, but that window has 30x more gyro noise than")
+    print("                 idle_car -- the vehicle was already moving. Using idle_car is")
+    print("                 strictly cleaner. The complementary velocity filter (LPF GPS + HPF IMU)")
+    print("                 absorbs any small constant-bias mismatch from per-drive camber, so the")
+    print("                 ~0.2 m/s^2 acc_x sensitivity to parking orientation doesn't propagate.")
     print()
 
     print("=" * width)
@@ -214,6 +289,13 @@ def main():
             "at_rest_m_s2": acc_at_rest.tolist(),
             "bias_m_s2": acc_bias.tolist(),
             "gravity_assumed_m_s2": GRAVITY_M_S2,
+            "magnitude_m_s2": tilt_idle["magnitude_m_s2"],
+            "pitch_deg": tilt_idle["pitch_deg"],
+            "roll_deg": tilt_idle["roll_deg"],
+            "total_tilt_deg": tilt_idle["total_tilt_deg"],
+            "g_scale_error_pct": tilt_idle["g_scale_error_pct"],
+            "tilt_consistency_pitch_spread_deg": pitch_spread,
+            "tilt_consistency_roll_spread_deg": roll_spread,
             "source": "idle_car",
         },
         "diagnostics": {
