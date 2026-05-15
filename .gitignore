@@ -1,8 +1,10 @@
 # Raw input data (large .mcap bags)
 data/
 
-# Generated outputs (CSVs, figures, etc.)
-build/
+# Generated outputs: ignore regenerable CSVs/JSONs but version-track the PNG plots
+# so they're browsable on GitHub without running the pipeline.
+build/*/*.csv
+build/*/*.json
 
 # Local Python virtualenv
 .venv/
