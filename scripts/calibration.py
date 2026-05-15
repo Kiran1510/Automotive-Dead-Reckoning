@@ -162,6 +162,25 @@ def main():
     mag_engine = engine[["mag_x", "mag_y", "mag_z"]].mean().to_numpy()
     engine_mag_offset = mag_engine - mag_idle
 
+    # --- Noise floors from stationary datasets (used to seed Kalman filter sigmas) ---
+    # On stationary data, anything moving in gyro_z is pure sensor noise (true rate = 0).
+    # Same for mag-derived yaw: stationary heading is constant, so yaw_mag variation
+    # is the magnetometer's effective angular noise.
+    def stationary_noise_stats(df, hard_iron, soft_iron):
+        mag_corrected = (soft_iron @ (df[["mag_x", "mag_y"]].to_numpy() - hard_iron).T).T
+        yaw_mag_unwrapped = np.unwrap(np.arctan2(mag_corrected[:, 1], mag_corrected[:, 0]))
+        return {
+            "gyro_std_rad_s": df[["gyro_x", "gyro_y", "gyro_z"]].std().to_list(),
+            "acc_std_m_s2":   df[["acc_x", "acc_y", "acc_z"]].std().to_list(),
+            "mag_std_tesla":  df[["mag_x", "mag_y", "mag_z"]].std().to_list(),
+            "mag_yaw_std_rad": float(np.std(yaw_mag_unwrapped)),
+            "samples": int(len(df)),
+            "duration_s": float(df["t"].iloc[-1] - df["t"].iloc[0]),
+        }
+
+    noise_idle = stationary_noise_stats(idle, new_hard_iron, new_soft_iron)
+    noise_engine = stationary_noise_stats(engine, new_hard_iron, new_soft_iron)
+
     # --- Print the comparison report ---
     width = 78
     print("=" * width)
@@ -266,6 +285,29 @@ def main():
     print(f"  milliGauss: {fmt_vec(engine_mag_offset * TESLA_TO_MILLIGAUSS, fmt='{:+.2f}')}")
     print()
 
+    print("=" * width)
+    print("NOISE FLOORS  (from stationary datasets; seed Kalman filter sigmas)")
+    print("=" * width)
+    print(f"  {'channel':<22} {'idle_car (engine off)':>26} {'engine_on':>16}")
+    print(f"  {'gyro_z std (rad/s)':<22} "
+          f"{noise_idle['gyro_std_rad_s'][2]:>26.4e} "
+          f"{noise_engine['gyro_std_rad_s'][2]:>16.4e}")
+    print(f"  {'mag_yaw std (rad)':<22} "
+          f"{noise_idle['mag_yaw_std_rad']:>26.4e} "
+          f"{noise_engine['mag_yaw_std_rad']:>16.4e}")
+    print(f"  {'mag_yaw std (deg)':<22} "
+          f"{np.degrees(noise_idle['mag_yaw_std_rad']):>26.4f} "
+          f"{np.degrees(noise_engine['mag_yaw_std_rad']):>16.4f}")
+    print()
+    print("  ratio engine_on / idle_car:")
+    print(f"    gyro_z:  {noise_engine['gyro_std_rad_s'][2] / noise_idle['gyro_std_rad_s'][2]:>5.2f}x  (engine vibration)")
+    print(f"    mag_yaw: {noise_engine['mag_yaw_std_rad'] / noise_idle['mag_yaw_std_rad']:>5.2f}x  (engine EM interference)")
+    print()
+    print("  -> the Kalman filter for driving (engine on) should use engine_on noise floors")
+    print("     for sigma_gyro. sigma_mag must additionally inflate for SPATIAL field variation")
+    print("     during the drive (something stationary data cannot measure directly).")
+    print()
+
     # --- Write JSON ---
     config = {
         "version": 1,
@@ -302,6 +344,10 @@ def main():
             "engine_induced_mag_offset_tesla": engine_mag_offset.tolist(),
             "engine_on_mean_tesla": mag_engine.tolist(),
             "idle_car_mean_tesla": mag_idle.tolist(),
+        },
+        "noise_floors": {
+            "idle_car": noise_idle,
+            "engine_on": noise_engine,
         },
     }
     args.out_json.parent.mkdir(parents=True, exist_ok=True)
