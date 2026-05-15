@@ -1,0 +1,20 @@
+# Raw input data (large .mcap bags)
+data/
+
+# Generated outputs (CSVs, figures, etc.)
+build/
+
+# Local Python virtualenv
+.venv/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Editor / OS noise
+.DS_Store
+*.swp
+
+# Local-only documentation / config
+.claude/
+CLAUDE.md
