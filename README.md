@@ -380,3 +380,4 @@ MIT. See `LICENSE`.
 - Northeastern University EECE 5554 Course Staff
 - ROS2 community
 - Open-source sensor driver contributors
+- Only the main branch of this repository was generated using LLM-assisted coding applications (Claude Code, Opus 4.6 with 1M token window). There may be mismatches between features described in the README and the actual code. If you come across any, please raise an issue.
