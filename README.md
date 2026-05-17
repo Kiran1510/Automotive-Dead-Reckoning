@@ -8,7 +8,7 @@ A 41-minute Boston drive ends with the dead-reckoned trajectory within **260 m m
 
 ![Dead-reckoned trajectory (blue) vs GPS UTM ground truth (red) on the 41-minute Boston drive](build/driving_data/trajectory_imu_vs_gps.png)
 
-🗺️ **[See it on a real map: interactive Google My Maps view of this drive](https://www.google.com/maps/d/u/0/edit?mid=1FudtXW8NFN7n-mvAs4K1Nh8OhTILkUw&usp=sharing)**
+🗺️ **[See it on a real map: interactive Google My Maps view of this drive](https://www.google.com/maps/d/u/0/viewer?mid=1FudtXW8NFN7n-mvAs4K1Nh8OhTILkUw)**
 
 ---
 
@@ -217,7 +217,7 @@ Red is the GPS ground truth (Mission Hill / Fenway / Northeastern area for this 
 blue is the IMU dead-reckoning. The drift becomes interpretable in geographic context —
 e.g. when blue cuts through buildings while red follows a street.
 
-**🗺️ [Explore this drive interactively on Google My Maps](https://www.google.com/maps/d/u/0/edit?mid=1FudtXW8NFN7n-mvAs4K1Nh8OhTILkUw&usp=sharing)** — pan, zoom, switch between street / satellite / terrain layers.
+**🗺️ [Explore this drive interactively on Google My Maps](https://www.google.com/maps/d/u/0/viewer?mid=1FudtXW8NFN7n-mvAs4K1Nh8OhTILkUw)** — pan, zoom, switch between street / satellite / terrain layers.
 
 The script also writes:
 - `trajectory_on_map.html` — interactive Folium map (open in any browser, pan/zoom/click)
