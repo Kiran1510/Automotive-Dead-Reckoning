@@ -192,6 +192,7 @@ Every script supports `--help`. Quick summary:
 | `scripts/dead_reckon.py <dataset>` | ω·V vs ÿ_obs rigid-body sanity check | `build/<dataset>/{imu,velocity}.csv` + calibration JSON | `dead_reckoning_comparison.png` |
 | `scripts/trajectory.py <dataset>` | 2-D path integration in UTM frame with alignment to GPS | `build/<dataset>/{yaw,velocity,gps}.csv` | `trajectory.csv` + `trajectory_imu_vs_gps.png` |
 | `scripts/verify_filter.py <dataset>` | Diagnostic: compares all yaw streams' std on a dataset; flags inconsistencies | `build/<dataset>/yaw.csv` | stdout |
+| `scripts/map_trajectory.py <dataset>` | Overlay GPS + IMU dead-reckoned trajectories on real-world map tiles | `build/<dataset>/{gps,trajectory}.csv` | `trajectory_on_map.{html,kml,png}` |
 
 ---
 
@@ -204,6 +205,19 @@ Every script supports `--help`. Quick summary:
 The headline plot. Blue is the dead-reckoned path computed only from the IMU's integrated velocity and chosen yaw source; red is the GPS UTM ground truth. They should track each other closely; divergence reveals heading drift.
 
 With the default `--yaw-source kalman`, expect **260 m mean / 425 m max / 325 m final** error over the 41-minute drive.
+
+### `build/driving_data/trajectory_on_map.png`
+
+![Trajectory overlaid on OpenStreetMap (Boston)](build/driving_data/trajectory_on_map.png)
+
+Same two trajectories overlaid on real-world map tiles via `scripts/map_trajectory.py`.
+Red is the GPS ground truth (Mission Hill / Fenway / Northeastern area for this drive),
+blue is the IMU dead-reckoning. The drift becomes interpretable in geographic context —
+e.g. when blue cuts through buildings while red follows a street.
+
+The script also writes:
+- `trajectory_on_map.html` — interactive Folium map (open in any browser, pan/zoom/click)
+- `trajectory_on_map.kml` — load into Google Earth, Google My Maps, or phone GPS apps
 
 ### `build/driving_data/yaw_all_sources.png`
 

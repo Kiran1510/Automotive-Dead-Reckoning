@@ -3,3 +3,8 @@ numpy>=2.0
 pandas>=2.2
 scipy>=1.14
 matplotlib>=3.9
+
+# Map overlays (scripts/map_trajectory.py only)
+folium>=0.20
+utm>=0.7
+staticmap>=0.5
